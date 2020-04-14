@@ -21,33 +21,25 @@ def update(newVal):
     i = update.i
     rawVals[curValInd] = newVal
     
+    #import pdb
+    #pdb.set_trace()
+    
     
     # have new val
-    fullSegVal = rawVals[(curValInd - lenSeg) % lenWindow]
+    fullSegVal = rawVals[(curValInd - lenSeg)]
     for delay in range(numDelay):   
-        delayVal = rawVals[(curValInd - delay) % lenWindow]
-        fullSegDelayVal = rawVals[(curValInd - lenSeg - delay) % lenWindow]
+        delayVal = rawVals[(curValInd - delay)]
+        fullSegDelayVal = rawVals[(curValInd - lenSeg - delay)]
         
-        if i - delay >= 0:
-            newTermCorr = newVal * delayVal
-            newTermMag  = delayVal * delayVal
-        else: 
-            newTermCorr = 0
-            newTermMag  = 0
-        
-        if i - lenSeg - delay >= 0:
-            oldTermCorr = fullSegVal  * fullSegDelayVal
-            oldTermMag  = fullSegDelayVal * fullSegDelayVal
-        else:
-            oldTermCorr = 0
-            oldTermMag  = 0
+        newTermCorr = newVal * delayVal
+        newTermMag  = delayVal * delayVal
+
+        oldTermCorr = fullSegVal  * fullSegDelayVal
+        oldTermMag  = fullSegDelayVal * fullSegDelayVal
             
-        if i > 0:
+        if i > -1:
             delayCorr_raw[i][delay] = delayCorr_raw[i - 1][delay] + newTermCorr - oldTermCorr
             delayMS[i][delay] = delayMS[i - 1][delay] + newTermMag - oldTermMag
-        else: 
-            delayCorr_raw[i][delay] = 0
-            delayMS[i][delay] = 0
               
         normTerm = (delayMS[i][delay] * delayMS[i][0])
         if (normTerm != 0):
@@ -55,6 +47,30 @@ def update(newVal):
     
     update.curValInd = (update.curValInd + 1) % lenWindow 
     update.i += 1
+    
+    
+def update_vector(newVal):
+    curValInd = update_vector.curValInd
+    i = update_vector.i
+    rawVals[curValInd] = newVal
+    oldVal = rawVals[curValInd - lenSeg]
+    
+    #import pdb
+    #pdb.set_trace()
+    
+    recentVals = rawVals.take(range(curValInd, curValInd - numDelay, -1))
+    oldVals    = rawVals.take(range(curValInd - lenSeg, curValInd - lenSeg - numDelay, -1))
+    
+    #import pdb 
+    #pdb.set_trace()
+    delayCorr_raw[i][:] = delayCorr_raw[i-1][:] + newVal * recentVals - oldVal * oldVals
+    delayMS[i][:] = delayMS[i-1][:] + recentVals * recentVals - oldVals * oldVals
+    
+    delayCorr[i][:] = (delayCorr_raw[i][:] * delayCorr_raw[i][:]) / (delayMS[i][0] * delayMS[i][:])
+    
+    update_vector.curValInd = (update_vector.curValInd + 1) % lenWindow 
+    update_vector.i += 1
+    
 
 
 def return_data():
@@ -65,7 +81,23 @@ def reset():
     update.curValInd = 0
     update.i = 0
     
-
+    update_vector.curValInd = 0
+    update_vector.i = 0
+    
+    global rawVals
+    global delayCorr_raw
+    global delayCorr
+    global delayMS 
+    
+    rawVals = np.zeros(lenWindow)
+    delayCorr_raw = np.zeros([numSamplesTotal, numDelay])
+    delayCorr = np.zeros([numSamplesTotal, numDelay])
+    delayMS = np.zeros([numSamplesTotal, numDelay])
+    
+        
 
 update.curValInd = 0
 update.i = 0
+
+update_vector.curValInd = 0
+update_vector.i = 0
