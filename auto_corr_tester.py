@@ -15,6 +15,7 @@ lenSeg = math.ceil(fs / minFreq)
 lenWindow = 2 * lenSeg
 numDelay = lenSeg + 1
 numSamplesAnalyze = lenWindow * 2
+numSamplesAnalyze = 4410
 
 #%%
 numSamples = fs * recLength
@@ -36,7 +37,7 @@ sd.play(rec, fs)
 sd.wait()
 
 #%%
-startSampleShort = 1000
+startSampleShort = 0
 timesShort = times[startSampleShort : startSampleShort + numSamplesAnalyze]
 signal = rec[startSampleShort : startSampleShort + numSamplesAnalyze]
 
@@ -64,14 +65,17 @@ for i in range(signal.size):
 print(time.time() - startTime)
     
 #%%
-(delayCorr_raw, delayCorr, delayMS) = auto_corr.return_data()
-delayCorr[np.isnan(delayCorr)] = 0
+(delayCorr_raw, delayCorr, delayMS, maxDelay) = auto_corr.return_data()
+#delayCorr[np.isnan(delayCorr)] = 0
+
+firstSamples = 1000
+plt.plot(maxDelay[0:firstSamples])
 
 #%%
 ax = sns.heatmap(delayCorr)
 
 #%%
-delay = 370
+delay = 215
 freq = fs / delay
 sampleTone = np.sin(2 * math.pi * freq * times)
 

@@ -8,12 +8,15 @@ lenSeg = 441
 numDelay = lenSeg + 1
 lenWindow = lenSeg + numDelay
 
-numSamplesTotal = 1764
+numSamplesTotal = 4410
+
+delaySkip = 45
 
 rawVals = np.zeros(lenWindow)
 delayCorr_raw = np.zeros([numSamplesTotal, numDelay])
 delayCorr = np.zeros([numSamplesTotal, numDelay])
 delayMS = np.zeros([numSamplesTotal, numDelay])
+maxDelay = np.zeros(numSamplesTotal)
 
 
 def update(newVal):
@@ -67,14 +70,16 @@ def update_vector(newVal):
     delayMS[i][:] = delayMS[i-1][:] + recentVals * recentVals - oldVals * oldVals
     
     delayCorr[i][:] = (delayCorr_raw[i][:] * delayCorr_raw[i][:]) / (delayMS[i][0] * delayMS[i][:])
+    delayCorr[i][np.isnan(delayCorr[i][:])] = 0
     
+    
+    maxDelay[i] = np.argmax(delayCorr[i][delaySkip:]) + delaySkip
+        
     update_vector.curValInd = (update_vector.curValInd + 1) % lenWindow 
     update_vector.i += 1
-    
-
 
 def return_data():
-    return((delayCorr_raw, delayCorr, delayMS))
+    return((delayCorr_raw, delayCorr, delayMS, maxDelay))
 
 
 def reset():
