@@ -5,6 +5,7 @@ import seaborn as sns; sns.set()
 import matplotlib.pyplot as plt
 import time
 import auto_corr
+import auto_corr_no_mem
 
 #%%
 fs = 44100
@@ -15,9 +16,12 @@ lenSeg = math.ceil(fs / minFreq)
 lenWindow = 2 * lenSeg
 numDelay = lenSeg + 1
 numSamplesAnalyze = lenWindow * 2
-numSamplesAnalyze = 4410
+numSamplesAnalyze = 44100
 
-#%%
+sampleAudioFreq = 110
+sampleAudio = np.sin(2 * math.pi * sampleAudioFreq * np.arange(0, numSamplesAnalyze / fs, 1 / fs))
+
+#%% record audio
 numSamples = fs * recLength
 times = np.linspace(0, recLength, numSamplesRec)
 
@@ -26,7 +30,7 @@ rec = rec[:, 0]
 
 sd.wait()
 
-#%%
+#%% plot and play audio
 plt.figure(3)
 plt.plot(times, rec)
 plt.xlabel("time")
@@ -36,10 +40,11 @@ plt.title("og recording")
 sd.play(rec, fs)
 sd.wait()
 
-#%%
+#%% shorten audio
 startSampleShort = 0
 timesShort = times[startSampleShort : startSampleShort + numSamplesAnalyze]
 signal = rec[startSampleShort : startSampleShort + numSamplesAnalyze]
+#signal = sampleAudio
 
 sd.play(signal, fs)
 sd.wait()
@@ -50,12 +55,7 @@ plt.xlabel("time")
 plt.ylabel("signal value")
 plt.title("shortened recording")
 
-#%%
-dummyData = np.array([0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2])
-lenSeg = 3
-signal = dummyData
-
-#%%
+#%% run autocorrelation
 auto_corr.reset()
 startTime = time.time()
 for i in range(signal.size):
@@ -64,41 +64,83 @@ for i in range(signal.size):
     
 print(time.time() - startTime)
     
-#%%
-(delayCorr_raw, delayCorr, delayMS, maxDelay) = auto_corr.return_data()
+#%% return data
+(delayCorr_raw, delayCorr, delayMS, maxDelay_2) = auto_corr.return_data()
 #delayCorr[np.isnan(delayCorr)] = 0
 
-firstSamples = 1000
-plt.plot(maxDelay[0:firstSamples])
+firstSamples = 44100
+plt.plot(maxDelay_2[0:firstSamples])
 
-#%%
+#%% print heatmap of correlation
 ax = sns.heatmap(delayCorr)
 
-#%%
-delay = 215
+#%% run memoryless autocorrelation
+auto_corr_no_mem.reset()
+maxDelay = np.zeros(signal.size)
+startTime = time.time()
+for i in range(signal.size):
+    #if i == 40300:
+     #   import pdb
+      #  pdb.set_trace()
+    newVal = signal[i]
+    maxDelay[i] = auto_corr_no_mem.update_vector(newVal)
+    
+print(time.time() - startTime)
+
+plt.plot(maxDelay[0:44100])
+
+#%% test a tone 
+delay = 220
 freq = fs / delay
 sampleTone = np.sin(2 * math.pi * freq * times)
 
 sd.play(sampleTone, fs)
 
+#%% basic reconstruction
+
+samplesPerTone = 100
+finalAudio = np.zeros(signal.size)
+toneTime = np.linspace(0, samplesPerTone / fs, samplesPerTone)
+allFreqs = np.zeros(math.ceil(signal.size / samplesPerTone))
+endingPhase = 0 
+#import pdb 
+#pdb.set_trace()
+
+for i in range(0, signal.size, samplesPerTone):
+    #print(i)
+    #print(math.floor(i / samplesPerTone))
+    freq = fs / maxDelay[i]
+    allFreqs[math.floor(i / samplesPerTone)] = freq
+    sinWave = np.cos(2 * math.pi * (freq * toneTime + endingPhase))
+    endingPhase += (freq * (samplesPerTone + 1) / fs) % 1
+
+    if (i + samplesPerTone > finalAudio.size):
+        finalAudio[i:finalAudio.size] = sinWave[finalAudio.size - i]
+    else:
+        finalAudio[i:i+samplesPerTone] = sinWave
+    
+sizeRamp = 10000
+rampStart = np.linspace(0, 1, sizeRamp)
+rampEnd   = np.linspace(1, 0, sizeRamp)
+finalAudio[:sizeRamp] = finalAudio[:sizeRamp] * rampStart
+finalAudio[-sizeRamp:] = finalAudio[-sizeRamp:] * rampEnd
+
+x = 44100
+plt.plot(finalAudio[0 : x])
+    
 #%%
-# test how long things run 
-vec = np.ones([100000, 1])
+sd.play(finalAudio)
+sd.wait()
+
+
+#%%
 startTime = time.time()
-
-for i in range(10000):
-    #result = vec + vec
-    #result = np.add(vec, vec)
-    
-    #result = vec * vec
-    #result = np.multiply(vec, vec)
-    
-    result = vec / vec
-    #result = np.divide(vec, vec)
-    
+sd.play(signal)
 print(time.time() - startTime)
-
-
-
+    
+    
+    
+    
+    
 
 

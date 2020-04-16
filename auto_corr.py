@@ -8,7 +8,7 @@ lenSeg = 441
 numDelay = lenSeg + 1
 lenWindow = lenSeg + numDelay
 
-numSamplesTotal = 4410
+numSamplesTotal = 44100
 
 delaySkip = 45
 
