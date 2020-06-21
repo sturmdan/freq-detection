@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import time
 import auto_corr
 import auto_corr_no_mem
+from scipy.signal import find_peaks
+
 
 #%%
 fs = 44100
@@ -18,7 +20,7 @@ numDelay = lenSeg + 1
 numSamplesAnalyze = lenWindow * 2
 numSamplesAnalyze = 44100
 
-sampleAudioFreq = 110
+sampleAudioFreq = 440
 sampleAudio = np.sin(2 * math.pi * sampleAudioFreq * np.arange(0, numSamplesAnalyze / fs, 1 / fs))
 
 #%% record audio
@@ -27,6 +29,7 @@ times = np.linspace(0, recLength, numSamplesRec)
 
 rec = sd.rec(numSamplesRec, samplerate = fs, channels = 2)
 rec = rec[:, 0]
+
 
 sd.wait()
 
@@ -71,6 +74,17 @@ print(time.time() - startTime)
 firstSamples = 44100
 plt.plot(maxDelay_2[0:firstSamples])
 
+#%%
+iteration = 40000
+delayStartIndex = 45
+
+relCorr = delayCorr[iteration, delayStartIndex:]
+maxCorr = np.max(relCorr)
+corrPeaks = find_peaks(relCorr, distance = 50)[0] 
+indexFirstPeak = np.argmax(relCorr[corrPeaks] > 0.95 * maxCorr)
+maxDelay = corrPeaks[indexFirstPeak] + delayStartIndex
+
+
 #%% print heatmap of correlation
 ax = sns.heatmap(delayCorr)
 
@@ -78,19 +92,38 @@ ax = sns.heatmap(delayCorr)
 auto_corr_no_mem.reset()
 maxDelay = np.zeros(signal.size)
 startTime = time.time()
-for i in range(signal.size):
-    #if i == 40300:
-     #   import pdb
-      #  pdb.set_trace()
+
+numSamples = signal.size
+for i in range(numSamples):
+    if 0:
+        if i == 900:
+            import pdb
+            pdb.set_trace()
+            
     newVal = signal[i]
     maxDelay[i] = auto_corr_no_mem.update_vector(newVal)
     
+    if 0:
+        if (maxDelay[i] > 300 and i > 10000):
+            import pdb 
+            pdb.set_trace()
+    
 print(time.time() - startTime)
+auto_corr_no_mem.print_time()
 
-plt.plot(maxDelay[0:44100])
+#%%
+fig, ax1 = plt.subplots()
+color = 'tab:red'
+ax1.plot(signal, color = color)
+ax2 = ax1.twinx()
+color = 'tab:blue'
+ax2.plot(maxDelay, color = color)
+
+plt.show()
+#plt.plot(maxDelay[0:44100])
 
 #%% test a tone 
-delay = 220
+delay = 90
 freq = fs / delay
 sampleTone = np.sin(2 * math.pi * freq * times)
 
@@ -98,7 +131,7 @@ sd.play(sampleTone, fs)
 
 #%% basic reconstruction
 
-samplesPerTone = 100
+samplesPerTone = 100 
 finalAudio = np.zeros(signal.size)
 toneTime = np.linspace(0, samplesPerTone / fs, samplesPerTone)
 allFreqs = np.zeros(math.ceil(signal.size / samplesPerTone))

@@ -8,7 +8,7 @@ lenSeg = 441
 numDelay = lenSeg + 1
 lenWindow = lenSeg + numDelay
 
-numSamplesTotal = 44100
+numSamplesTotal = 1000
 
 delaySkip = 45
 
@@ -69,7 +69,9 @@ def update_vector(newVal):
     delayCorr_raw[i][:] = delayCorr_raw[i-1][:] + newVal * recentVals - oldVal * oldVals
     delayMS[i][:] = delayMS[i-1][:] + recentVals * recentVals - oldVals * oldVals
     
-    delayCorr[i][:] = (delayCorr_raw[i][:] * delayCorr_raw[i][:]) / (delayMS[i][0] * delayMS[i][:])
+    #delayCorr[i][:] = (delayCorr_raw[i][:] * delayCorr_raw[i][:]) / (delayMS[i][0] * delayMS[i][:])
+    delayCorr[i][:] = (delayCorr_raw[i][:]) / (np.sqrt(delayMS[i][0] * delayMS[i][:]))
+
     delayCorr[i][np.isnan(delayCorr[i][:])] = 0
     
     
